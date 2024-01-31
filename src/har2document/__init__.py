@@ -1,3 +1,4 @@
+import csv
 import json
 import sys
 from collections.abc import Callable
@@ -5,7 +6,7 @@ from datetime import datetime, timezone
 from functools import partial
 from http import HTTPStatus
 from pathlib import Path
-from typing import TypedDict
+from typing import Any, TypedDict, cast, get_type_hints
 from urllib.parse import unquote_plus
 
 if sys.version_info >= (3, 11):
@@ -113,6 +114,29 @@ def convert_har_file_to_documents(
     ]
 
 
+def export_dicts_to_csv(
+    dicts: list[dict[str, Any]],
+    csv_file_path: Path,
+    fieldnames: list[str],
+) -> None:
+    """Exports a list of dictionaries to a CSV file.
+
+    Args:
+        dicts (list[dict[str, Any]]): A list of dictionaries to be written to the CSV.
+        csv_file_path (str): The file path where the CSV should be saved.
+        fieldnames (list[str]): The list of keys that will be the header of the CSV.
+    """
+    with open(file=csv_file_path, mode="w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.DictWriter(
+            csv_file,
+            fieldnames=fieldnames,
+            escapechar="\\",
+            quoting=csv.QUOTE_ALL,
+        )
+        writer.writeheader()
+        writer.writerows(dicts)
+
+
 def main() -> None:
     # TODO: Get input from a client
     har_file_path: Path = Path("sample.har")
@@ -127,6 +151,11 @@ def main() -> None:
     )
 
     print(documents)
+    export_dicts_to_csv(
+        cast(list[dict[str, Any]], documents),
+        har_file_path.with_suffix(".csv"),
+        fieldnames=list(get_type_hints(Document).keys()),
+    )
 
 
 if __name__ == "__main__":
