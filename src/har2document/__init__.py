@@ -1,6 +1,8 @@
 import json
 import sys
+from collections.abc import Callable
 from datetime import datetime, timezone
+from functools import partial
 from http import HTTPStatus
 from pathlib import Path
 from typing import TypedDict
@@ -61,8 +63,15 @@ def parse_body_text(text: str, content_type: str) -> str:
             return text
 
 
+def replace_string_by_mapping(body_text: str, mapping: dict[str, str]) -> str:
+    for key, value in mapping.items():
+        body_text = body_text.replace(key, value)
+    return body_text
+
+
 def convert_har_entry_to_document(
     entry: HarEntry,
+    replace_string: Callable[[str], str],
 ) -> Document:
     request: Request = entry.request
     response: Response = entry.response
@@ -78,23 +87,34 @@ def convert_har_entry_to_document(
         "request_query_string": parse_request_query_string(request.queryString),
         "request_content_type": request.mimeType,
         "request_body": request.text
-        and parse_body_text(request.text, request.mimeType),
+        and replace_string(parse_body_text(request.text, request.mimeType)),
         "response_datetime": parse_response_date(response.date),
         "response_status_code": response.status,
         "response_content_type": response.mimeType,
         "response_body": response.text
-        and parse_body_text(response.text, response.mimeType),
+        and replace_string(parse_body_text(response.text, response.mimeType)),
         "time_elapsed": entry.time,
     }
 
 
 def main() -> None:
+    # TODO: Get input from a client
     har_file_path: Path = Path("/usr/example.har")
     har_parser = HarParser.from_file(har_file_path)
 
+    # TODO: Get input from a client
+    masking_mapping: dict[str, str] = {
+        "realpassword!@": "1q2w3e4r!@",
+        "01012345678": "01000000000",
+    }
+    replace_string: Callable[[str], str] = partial(
+        replace_string_by_mapping,
+        mapping=masking_mapping,
+    )
+
     for page in har_parser.pages:
         for entry in page.entries:
-            print(convert_har_entry_to_document(entry))
+            print(convert_har_entry_to_document(entry, replace_string))
 
 
 if __name__ == "__main__":
