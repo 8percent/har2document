@@ -137,6 +137,154 @@ def export_dicts_to_csv(
         writer.writerows(dicts)
 
 
+def convert_document_to_markdown(
+    document: Document,
+) -> str:
+    return "".join([
+        _generate_heading(
+            document["request_method"],
+            document["request_path"],
+            document["request_query_string"],
+        ),
+        (
+            "\n\n" + _generate_query_parameter(document["request_query_string"])
+            if document["request_query_string"]
+            else ""
+        ),
+        (
+            "\n\n" + _generate_request_header(document["request_content_type"])
+            if document["request_content_type"]
+            and document["request_content_type"] != "application/json"
+            else ""
+        ),
+        (
+            "\n\n" + _generate_request_body(document["request_body"])
+            if document["request_method"] != HTTPMethod.GET
+            else ""
+        ),
+        "\n\n"
+        + _generate_response_body(
+            document["response_status_code"],
+            document["response_body"],
+        ),
+    ])
+
+
+def _generate_heading(
+    request_method: HTTPMethod,
+    request_path: str,
+    query_string: dict[str, str],
+    level: int = 3,
+) -> str:
+    """
+    Example:
+        ### GET `/api/users/?page={page}&size={size}`
+
+    Example:
+        ### POST `/api/users/?type=personal`
+    """
+    if request_method == HTTPMethod.GET:
+        for key, value in query_string.items():
+            request_path = request_path.replace(f"{key}={value}", f"{key}={{{key}}}")
+
+    return f"{'#' * level} {request_method} `{request_path}`"
+
+
+def _generate_query_parameter(
+    query_string: dict[str, str],
+) -> str:
+    """
+    Example:
+        Query Parameter
+
+        - `page`: `1`
+        - `size`: `10`
+    """
+    return "Query Parameter\n\n" + "\n".join(
+        f"- `{key}`: `{value}`" for key, value in query_string.items()
+    )
+
+
+def _generate_request_header(
+    request_content_type: str,
+):
+    """
+
+    Example:
+        Request Header
+
+        - Content-Type: `application/json`
+    """
+    return f"Request Header\n\n- Content-Type: `{request_content_type}`"
+
+
+def _generate_request_body(
+    request_body: str | None,
+) -> str:
+    """
+    Example (request_body is not None):
+        Request Body
+
+        ```json
+        {
+            "name": "John Doe",
+            "phoneNumber": "01012345678",
+        }
+        ```
+
+    Example (request_body is None):
+        Request Body
+
+        ```json
+
+        ```
+    """
+    return f"Request Body\n\n```json\n{request_body or ''}\n```"
+
+
+def _generate_response_body(
+    response_status_code: HTTPStatus,
+    response_body: str | None,
+) -> str:
+    """
+    Example (response_body != ""):
+        Response Body (200)
+
+        ```json
+        {
+            "name": "John Doe",
+            "phoneNumber": "01012345678",
+        }
+        ```
+
+    Example (response_body == ""):
+        Response Body (204)
+
+        ```json
+
+        ```
+    """
+    return (
+        f"Response Body ({response_status_code})\n\n```json\n{response_body or ''}\n```"
+    )
+
+
+def convert_documents_to_markdown(
+    documents: list[Document],
+) -> str:
+    return "\n\n".join(
+        [convert_document_to_markdown(document) for document in documents]
+    )
+
+
+def export_markdown_to_file(
+    markdown: str,
+    file_path: Path,
+) -> None:
+    with open(file=file_path, mode="w", encoding="utf-8") as file:
+        file.write(markdown)
+
+
 def main() -> None:
     # TODO: Get input from a client
     har_file_path: Path = Path("sample.har")
@@ -155,6 +303,10 @@ def main() -> None:
         cast(list[dict[str, Any]], documents),
         har_file_path.with_suffix(".csv"),
         fieldnames=list(get_type_hints(Document).keys()),
+    )
+    export_markdown_to_file(
+        convert_documents_to_markdown(documents),
+        har_file_path.with_suffix(".md"),
     )
 
 
