@@ -29,7 +29,7 @@ class Document(TypedDict):
     response_datetime: datetime
     response_status_code: HTTPStatus
     response_content_type: str | None
-    response_body: str | None
+    response_body: str
     time_elapsed: int
 
 
@@ -97,24 +97,36 @@ def convert_har_entry_to_document(
     }
 
 
-def main() -> None:
-    # TODO: Get input from a client
-    har_file_path: Path = Path("/usr/example.har")
+def convert_har_file_to_documents(
+    har_file_path: Path,
+    masking_mapping: dict[str, str],
+) -> list[Document]:
     har_parser = HarParser.from_file(har_file_path)
-
-    # TODO: Get input from a client
-    masking_mapping: dict[str, str] = {
-        "realpassword!@": "1q2w3e4r!@",
-        "01012345678": "01000000000",
-    }
     replace_string: Callable[[str], str] = partial(
         replace_string_by_mapping,
         mapping=masking_mapping,
     )
+    return [
+        convert_har_entry_to_document(entry, replace_string)
+        for page in har_parser.pages
+        for entry in page.entries
+    ]
 
-    for page in har_parser.pages:
-        for entry in page.entries:
-            print(convert_har_entry_to_document(entry, replace_string))
+
+def main() -> None:
+    # TODO: Get input from a client
+    har_file_path: Path = Path("sample.har")
+    masking_mapping: dict[str, str] = {
+        "realpassword!@": "1q2w3e4r!@",
+        "01012345678": "01000000000",
+    }
+
+    documents: list[Document] = convert_har_file_to_documents(
+        har_file_path,
+        masking_mapping,
+    )
+
+    print(documents)
 
 
 if __name__ == "__main__":
