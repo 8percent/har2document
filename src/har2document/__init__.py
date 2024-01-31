@@ -17,6 +17,18 @@ else:
 from haralyzer import HarEntry, HarParser
 from haralyzer.http import Request, Response
 
+__all__ = [
+    "Document",
+    "convert_document_to_markdown",
+    "convert_documents_to_markdown",
+    "convert_har_entry_to_document",
+    "convert_har_file_to_documents",
+    "export_dicts_to_csv",
+    "export_markdown_to_file",
+    "HTTPMethod",
+    "HTTPStatus",
+]
+
 
 class Document(TypedDict):
     request_datetime: datetime
