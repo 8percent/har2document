@@ -19,15 +19,21 @@ from haralyzer import HarEntry, HarParser
 from haralyzer.http import Request, Response
 
 __all__ = [
+    "HTTPMethod",
+    "HTTPStatus",
     "Document",
-    "render_document_to_markdown",
-    "render_documents_to_markdown",
     "convert_har_entry_to_document",
     "convert_har_file_to_documents",
     "export_dicts_to_csv",
     "export_markdown_to_file",
-    "HTTPMethod",
-    "HTTPStatus",
+    "MarkdownComponent",
+    "Endpoint",
+    "QueryParameter",
+    "RequestHeader",
+    "RequestBody",
+    "ResponseBody",
+    "render_document_to_markdown",
+    "render_documents_to_markdown",
 ]
 
 
