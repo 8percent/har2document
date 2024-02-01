@@ -1,7 +1,8 @@
 import csv
 import json
 import sys
-from collections.abc import Callable
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterator
 from datetime import datetime, timezone
 from functools import partial
 from http import HTTPStatus
@@ -149,143 +150,151 @@ def export_dicts_to_csv(
         writer.writerows(dicts)
 
 
-def _generate_heading(
-    request_method: HTTPMethod,
-    request_path: str,
-    query_string: dict[str, str],
-    level: int = 3,
-) -> str:
-    """
-    Example:
-        ### GET `/api/users/?page={page}&size={size}`
+class MarkdownComponent(ABC):
+    def __init__(self, document: Document):
+        self.document = document
 
-    Example:
-        ### POST `/api/users/?type=personal`
-    """
-    if request_method == HTTPMethod.GET:
-        for key, value in query_string.items():
-            request_path = request_path.replace(f"{key}={value}", f"{key}={{{key}}}")
+    @abstractmethod
+    def render(self) -> str:
+        raise NotImplementedError
 
-    return f"{'#' * level} {request_method} `{request_path}`"
+    @property
+    def condition(self) -> bool:
+        return True
 
 
-def _generate_query_parameter(
-    query_string: dict[str, str],
-) -> str:
-    """
-    Example:
-        Query Parameter
+class Endpoint(MarkdownComponent):
+    def render(self) -> str:
+        """
+        Example:
+            ### GET `/api/users/?page={page}&size={size}`
 
-        - `page`: `1`
-        - `size`: `10`
-    """
-    return "Query Parameter\n\n" + "\n".join(
-        f"- `{key}`: `{value}`" for key, value in query_string.items()
-    )
+        Example:
+            ### POST `/api/users/?type=personal`
+        """
+        if self.document["request_method"] == HTTPMethod.GET:
+            for key, value in self.document["request_query_string"].items():
+                self.document["request_path"] = self.document["request_path"].replace(
+                    f"{key}={value}", f"{key}={{{key}}}"
+                )
 
-
-def _generate_request_header(
-    request_content_type: str,
-):
-    """
-
-    Example:
-        Request Header
-
-        - Content-Type: `application/json`
-    """
-    return f"Request Header\n\n- Content-Type: `{request_content_type}`"
+        return (
+            f"### {self.document['request_method']} `{self.document['request_path']}`"
+        )
 
 
-def _generate_request_body(
-    request_body: str | None,
-) -> str:
-    """
-    Example (request_body is not None):
-        Request Body
+class QueryParameter(MarkdownComponent):
+    def render(self) -> str:
+        """
+        Example:
+            Query Parameter
 
-        ```json
-        {
-            "name": "John Doe",
-            "phoneNumber": "01012345678",
-        }
-        ```
+            - `page`: `1`
+            - `size`: `10`
+        """
+        return "Query Parameter\n\n" + "\n".join(
+            f"- `{key}`: `{value}`"
+            for key, value in self.document["request_query_string"].items()
+        )
 
-    Example (request_body is None):
-        Request Body
-
-        ```json
-
-        ```
-    """
-    return f"Request Body\n\n```json\n{request_body or ''}\n```"
+    @property
+    def condition(self) -> bool:
+        return bool(self.document["request_query_string"])
 
 
-def _generate_response_body(
-    response_status_code: HTTPStatus,
-    response_body: str | None,
-) -> str:
-    """
-    Example (response_body != ""):
-        Response Body (200)
+class RequestHeader(MarkdownComponent):
+    def render(self) -> str:
+        """
+        Example:
+            Request Header
 
-        ```json
-        {
-            "name": "John Doe",
-            "phoneNumber": "01012345678",
-        }
-        ```
+            - Content-Type: `application/json`
+        """
+        return (
+            "Request Header\n\n- Content-Type:"
+            f" `{self.document['request_content_type']}`"
+        )
 
-    Example (response_body == ""):
-        Response Body (204)
+    @property
+    def condition(self) -> bool:
+        return bool(
+            self.document["request_content_type"]
+            and self.document["request_content_type"] != "application/json"
+        )
 
-        ```json
 
-        ```
-    """
-    return (
-        f"Response Body ({response_status_code})\n\n```json\n{response_body or ''}\n```"
-    )
+class RequestBody(MarkdownComponent):
+    def render(self) -> str:
+        """
+        Example (request_body is not None):
+            Request Body
+
+            ```json
+            {
+                "name": "John Doe",
+                "phoneNumber": "01012345678",
+            }
+            ```
+
+        Example (request_body is None):
+            Request Body
+
+            ```json
+
+            ```
+        """
+        return f"Request Body\n\n```json\n{self.document['request_body'] or ''}\n```"
+
+    @property
+    def condition(self) -> bool:
+        return self.document["request_method"] != HTTPMethod.GET
+
+
+class ResponseBody(MarkdownComponent):
+    def render(self) -> str:
+        """
+        Example (response_body != ""):
+            Response Body (200)
+
+            ```json
+            {
+                "name": "John Doe",
+                "phoneNumber": "01012345678",
+            }
+            ```
+
+        Example (response_body == ""):
+            Response Body (204)
+
+            ```json
+
+            ```
+        """
+        return (
+            f"Response Body ({self.document['response_status_code']})\n\n"
+            f"```json\n{self.document['response_body'] or ''}\n```"
+        )
 
 
 def render_document_to_markdown(
     document: Document,
+    component_classes: list[type[MarkdownComponent]],
 ) -> str:
-    return "".join([
-        _generate_heading(
-            document["request_method"],
-            document["request_path"],
-            document["request_query_string"],
-        ),
-        (
-            "\n\n" + _generate_query_parameter(document["request_query_string"])
-            if document["request_query_string"]
-            else ""
-        ),
-        (
-            "\n\n" + _generate_request_header(document["request_content_type"])
-            if document["request_content_type"]
-            and document["request_content_type"] != "application/json"
-            else ""
-        ),
-        (
-            "\n\n" + _generate_request_body(document["request_body"])
-            if document["request_method"] != HTTPMethod.GET
-            else ""
-        ),
-        "\n\n"
-        + _generate_response_body(
-            document["response_status_code"],
-            document["response_body"],
-        ),
-    ])
+    components: Iterator[MarkdownComponent] = (
+        component_class(document) for component_class in component_classes
+    )
+    return "\n\n".join(
+        component.render() for component in components if component.condition
+    )
 
 
 def render_documents_to_markdown(
     documents: list[Document],
+    component_classes: list[type[MarkdownComponent]],
 ) -> str:
     return "\n\n".join(
-        [render_document_to_markdown(document) for document in documents]
+        render_document_to_markdown(document, component_classes)
+        for document in documents
     )
 
 
@@ -304,6 +313,13 @@ def main() -> None:
         "realpassword!@": "1q2w3e4r!@",
         "01012345678": "01000000000",
     }
+    markdown_component_classes: list[type[MarkdownComponent]] = [
+        Endpoint,
+        QueryParameter,
+        RequestHeader,
+        RequestBody,
+        ResponseBody,
+    ]
 
     documents: list[Document] = convert_har_file_to_documents(
         har_file_path,
@@ -317,7 +333,7 @@ def main() -> None:
         fieldnames=list(get_type_hints(Document).keys()),
     )
     export_markdown_to_file(
-        render_documents_to_markdown(documents),
+        render_documents_to_markdown(documents, markdown_component_classes),
         har_file_path.with_suffix(".md"),
     )
 
