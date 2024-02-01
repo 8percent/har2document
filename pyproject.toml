@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "har2document"
-version = "0.1.1"
+version = "v0.1.2"
 description = "Generate API document from HAR file"
 authors = ["Jeongseop Lim <jseoplim@gmail.com>"]
 maintainers = ["Jeongseop Lim <jseoplim@gmail.com>"]
