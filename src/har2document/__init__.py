@@ -19,8 +19,8 @@ from haralyzer.http import Request, Response
 
 __all__ = [
     "Document",
-    "convert_document_to_markdown",
-    "convert_documents_to_markdown",
+    "render_document_to_markdown",
+    "render_documents_to_markdown",
     "convert_har_entry_to_document",
     "convert_har_file_to_documents",
     "export_dicts_to_csv",
@@ -149,39 +149,6 @@ def export_dicts_to_csv(
         writer.writerows(dicts)
 
 
-def convert_document_to_markdown(
-    document: Document,
-) -> str:
-    return "".join([
-        _generate_heading(
-            document["request_method"],
-            document["request_path"],
-            document["request_query_string"],
-        ),
-        (
-            "\n\n" + _generate_query_parameter(document["request_query_string"])
-            if document["request_query_string"]
-            else ""
-        ),
-        (
-            "\n\n" + _generate_request_header(document["request_content_type"])
-            if document["request_content_type"]
-            and document["request_content_type"] != "application/json"
-            else ""
-        ),
-        (
-            "\n\n" + _generate_request_body(document["request_body"])
-            if document["request_method"] != HTTPMethod.GET
-            else ""
-        ),
-        "\n\n"
-        + _generate_response_body(
-            document["response_status_code"],
-            document["response_body"],
-        ),
-    ])
-
-
 def _generate_heading(
     request_method: HTTPMethod,
     request_path: str,
@@ -281,11 +248,44 @@ def _generate_response_body(
     )
 
 
-def convert_documents_to_markdown(
+def render_document_to_markdown(
+    document: Document,
+) -> str:
+    return "".join([
+        _generate_heading(
+            document["request_method"],
+            document["request_path"],
+            document["request_query_string"],
+        ),
+        (
+            "\n\n" + _generate_query_parameter(document["request_query_string"])
+            if document["request_query_string"]
+            else ""
+        ),
+        (
+            "\n\n" + _generate_request_header(document["request_content_type"])
+            if document["request_content_type"]
+            and document["request_content_type"] != "application/json"
+            else ""
+        ),
+        (
+            "\n\n" + _generate_request_body(document["request_body"])
+            if document["request_method"] != HTTPMethod.GET
+            else ""
+        ),
+        "\n\n"
+        + _generate_response_body(
+            document["response_status_code"],
+            document["response_body"],
+        ),
+    ])
+
+
+def render_documents_to_markdown(
     documents: list[Document],
 ) -> str:
     return "\n\n".join(
-        [convert_document_to_markdown(document) for document in documents]
+        [render_document_to_markdown(document) for document in documents]
     )
 
 
@@ -317,7 +317,7 @@ def main() -> None:
         fieldnames=list(get_type_hints(Document).keys()),
     )
     export_markdown_to_file(
-        convert_documents_to_markdown(documents),
+        render_documents_to_markdown(documents),
         har_file_path.with_suffix(".md"),
     )
 
