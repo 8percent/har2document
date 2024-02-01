@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "har2document"
-version = "0.0.1"
+version = "0.1.0"
 description = "Generate API document from HAR file"
 authors = ["Jeongseop Lim <jseoplim@gmail.com>"]
 maintainers = ["Jeongseop Lim <jseoplim@gmail.com>"]
@@ -36,7 +36,7 @@ line_length = 88
 [tool.black]
 preview = true
 line-length = 88
-target-version = ['py39', 'py310', 'py311']
+target-version = ['py310', 'py311']
 
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"
