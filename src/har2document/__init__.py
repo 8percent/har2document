@@ -178,15 +178,13 @@ class Endpoint(MarkdownComponent):
         Example:
             ### POST `/api/users/?type=personal`
         """
-        if self.document["request_method"] == HTTPMethod.GET:
-            for key, value in self.document["request_query_string"].items():
-                self.document["request_path"] = self.document["request_path"].replace(
-                    f"{key}={value}", f"{key}={{{key}}}"
-                )
+        request_path_replaced: str = self.document["request_path"]
+        for key, value in self.document["request_query_string"].items():
+            request_path_replaced = request_path_replaced.replace(
+                f"{key}={value}", f"{key}={{{key}}}"
+            )
 
-        return (
-            f"### {self.document['request_method']} `{self.document['request_path']}`"
-        )
+        return f"### {self.document['request_method']} `{request_path_replaced}`"
 
 
 class QueryParameter(MarkdownComponent):
