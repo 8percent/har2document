@@ -13,7 +13,7 @@ from urllib.parse import unquote_plus
 if sys.version_info >= (3, 11):
     from http import HTTPMethod
 else:
-    from _http import HTTPMethod
+    from ._http import HTTPMethod
 
 from haralyzer import HarEntry, HarParser
 from haralyzer.http import Request, Response
