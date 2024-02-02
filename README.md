@@ -1,4 +1,4 @@
-# Har2Document-Django
+# Har2Document
 
 ![Build](https://github.com/8percent/python-library/actions/workflows/ci.yml/badge.svg)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
